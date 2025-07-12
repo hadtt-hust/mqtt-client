@@ -5,6 +5,8 @@ export interface MqttBrokerConfig {
   path?: string;
   clientId?: string;
   useSSL?: boolean;
+  username?: string;
+  password?: string;
 }
 
 // MQTT Message

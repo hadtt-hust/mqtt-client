@@ -1,19 +1,25 @@
 declare module "paho-mqtt" {
-  export class Client {
-    constructor(host: string, port: number, path: string, clientId: string);
+  export interface MqttConnectionOptions {
+    onSuccess?: () => void;
+    onFailure?: (error: { errorCode: number; errorMessage: string }) => void;
+    useSSL?: boolean;
+    userName?: string;
+    password?: string;
+    timeout?: number;
+    keepAliveInterval?: number;
+    cleanSession?: boolean;
+    willMessage?: Message;
+  }
 
-    isConnected(): boolean;
-    connect(options: {
-      onSuccess?: () => void;
-      onFailure?: (error: { errorCode: number; errorMessage: string }) => void;
-      useSSL?: boolean;
-    }): void;
-    disconnect(): void;
-    subscribe(topic: string): void;
-    send(message: Message): void;
+  export interface MqttSubscribeOptions {
+    qos?: number;
+    onSuccess?: () => void;
+    onFailure?: (error: { errorCode: number; errorMessage: string }) => void;
+  }
 
-    onConnectionLost: (responseObject: { errorCode: number; errorMessage: string }) => void;
-    onMessageArrived: (message: Message) => void;
+  export interface MqttPublishOptions {
+    qos?: number;
+    retained?: boolean;
   }
 
   export class Message {
@@ -24,6 +30,23 @@ declare module "paho-mqtt" {
     qos?: number;
     retained?: boolean;
     duplicate?: boolean;
+  }
+
+  export class Client {
+    constructor(host: string, port: number, path: string, clientId: string);
+
+    connect(options: MqttConnectionOptions): void;
+    disconnect(): void;
+    isConnected(): boolean;
+
+    subscribe(topic: string, options?: MqttSubscribeOptions): void;
+    unsubscribe(topic: string, options?: { onSuccess?: () => void; onFailure?: (error: any) => void }): void;
+
+    send(message: Message): void;
+    publish(topic: string, payload: string, options?: MqttPublishOptions): void;
+
+    onConnectionLost: (responseObject: { errorCode: number; errorMessage: string }) => void;
+    onMessageArrived: (message: Message) => void;
   }
 }
 
@@ -37,3 +60,4 @@ declare global {
     };
   }
 }
+

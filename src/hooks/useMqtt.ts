@@ -8,7 +8,9 @@ const useMqtt = (brokerConfig: MqttBrokerConfig = {}): UseMqttReturn => {
     port = 8000,
     path = "/mqtt",
     clientId: providedClientId,
-    useSSL = false
+    useSSL = false,
+    username,
+    password
   } = brokerConfig;
 
   // Tạo clientId cố định để tránh re-render
@@ -65,7 +67,9 @@ const useMqtt = (brokerConfig: MqttBrokerConfig = {}): UseMqttReturn => {
         connectingRef.current = false;
         console.error("❌ MQTT Connection error:", err.errorMessage);
       },
-      useSSL
+      useSSL,
+      userName: username,
+      password: password
     });
 
     // Cleanup khi unmount

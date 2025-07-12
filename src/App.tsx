@@ -6,19 +6,15 @@ import Header from "./components/Header";
 import MqttTest from "./components/MqttTest";
 import useMqtt from "./hooks/useMqtt";
 import { ParsedMessage } from "./types/mqtt";
+import { mqttConfig, mqttTopics, messageConfig } from "./config/mqtt-config";
 
 const App: React.FC = () => {
-  const routingKey: string = "psu/drone";
+  const routingKey: string = mqttTopics.default;
   const [parsedMessages, setParsedMessages] = useState<string[]>([]);
   const subscribedRef = useRef<boolean>(false);
 
-  // Sử dụng MQTT hook
-  const { client, isConnected, messages, subscribe, publish } = useMqtt({
-    host: "broker.hivemq.com",
-    port: 8000,
-    path: "/mqtt",
-    useSSL: false
-  });
+  // Sử dụng MQTT hook với cấu hình từ file config
+  const { client, isConnected, messages, subscribe, publish } = useMqtt(mqttConfig);
 
   // Subscribe khi kết nối thành công - chỉ một lần
   useEffect(() => {
@@ -52,10 +48,7 @@ const App: React.FC = () => {
   }, [messages]);
 
   const handlePublish = (message: string): void => {
-    const mqttMessage = JSON.stringify({
-      message,
-      timestamp: new Date().toISOString()
-    });
+    const mqttMessage = JSON.stringify(messageConfig.formatMessage(message));
     publish(routingKey, mqttMessage);
   };
 
