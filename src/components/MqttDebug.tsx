@@ -18,7 +18,7 @@ const MqttDebug: React.FC<MqttDebugProps> = () => {
   const [testConfig, setTestConfig] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const { client, isConnected, messages, subscribe, publish, disconnect } = useMqtt(
+  const { isConnected, isRetrying, retryCount, maxRetries, messages, subscribe, publish, disconnect } = useMqtt(
     testConfig || { host: "localhost", port: 9001, path: "/" }
   );
 
@@ -153,8 +153,15 @@ const MqttDebug: React.FC<MqttDebugProps> = () => {
       <Card className="mb-3">
         <Card.Header>Connection Status</Card.Header>
         <Card.Body>
-          <Alert variant={isConnected ? "success" : "danger"}>
-            <strong>Status:</strong> {isConnected ? "Connected" : "Disconnected"}
+          <Alert variant={isConnected ? "success" : isRetrying ? "warning" : "danger"}>
+            <strong>Status:</strong> {isConnected ? "Connected" : isRetrying ? "Retrying" : "Disconnected"}
+            {isRetrying && (
+              <div className="mt-2">
+                <small>
+                  Retry attempt: {retryCount + 1}/{maxRetries + 1}
+                </small>
+              </div>
+            )}
           </Alert>
 
           {testConfig && (
@@ -207,3 +214,4 @@ const MqttDebug: React.FC<MqttDebugProps> = () => {
 };
 
 export default MqttDebug;
+

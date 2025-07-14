@@ -25,18 +25,37 @@ const useMqtt = (brokerConfig: MqttBrokerConfig): UseMqttReturn => {
 
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [messages, setMessages] = useState<string[]>([]);
+  const [retryCount, setRetryCount] = useState<number>(0);
+  const [isRetrying, setIsRetrying] = useState<boolean>(false);
+
   const clientRef = useRef<Client | null>(null);
   const connectingRef = useRef<boolean>(false);
   const mountedRef = useRef<boolean>(true);
   const initializedRef = useRef<boolean>(false);
 
-  // Tạo client MQTT - chỉ chạy một lần khi component mount
-  useEffect(() => {
-    if (initializedRef.current) {
+  // Retry configuration
+  const maxRetries = 5;
+  const retryDelay = 3000; // 3 seconds
+
+  // Hàm kết nối MQTT với retry logic
+  const connectMqtt = useCallback(() => {
+    if (connectingRef.current || !mountedRef.current) {
       return;
     }
 
-    initializedRef.current = true;
+    connectingRef.current = true;
+    setIsRetrying(retryCount > 0);
+
+    console.log(`🔗 Attempting to connect to MQTT broker (attempt ${retryCount + 1}/${maxRetries + 1}):`, {
+      host,
+      port,
+      path,
+      useSSL,
+      username: username ? "***" : "none",
+      password: password ? "***" : "none"
+    });
+
+    // Tạo client mới mỗi lần retry
     clientRef.current = new Client(host, port, path, clientId);
     const client = clientRef.current;
 
@@ -47,6 +66,17 @@ const useMqtt = (brokerConfig: MqttBrokerConfig): UseMqttReturn => {
       connectingRef.current = false;
       if (responseObject.errorCode !== 0) {
         console.error("🔌 MQTT Connection lost:", responseObject.errorMessage);
+
+        // Tự động reconnect khi mất kết nối (nếu đã kết nối thành công trước đó)
+        if (retryCount === 0) {
+          console.log("🔄 Auto-reconnecting after connection lost...");
+          setTimeout(() => {
+            if (mountedRef.current) {
+              setRetryCount(1);
+              connectMqtt();
+            }
+          }, retryDelay);
+        }
       }
     };
 
@@ -57,22 +87,12 @@ const useMqtt = (brokerConfig: MqttBrokerConfig): UseMqttReturn => {
     };
 
     // Kết nối
-    connectingRef.current = true;
-
-    console.log("🔗 Attempting to connect to MQTT broker:", {
-      host,
-      port,
-      path,
-      useSSL,
-      username: username ? "***" : "none",
-      password: password ? "***" : "none",
-      clientId
-    });
-
     client.connect({
       onSuccess: () => {
         if (!mountedRef.current) return;
         setIsConnected(true);
+        setIsRetrying(false);
+        setRetryCount(0); // Reset retry count khi thành công
         connectingRef.current = false;
         console.log("✅ Connected to MQTT broker successfully");
       },
@@ -83,7 +103,9 @@ const useMqtt = (brokerConfig: MqttBrokerConfig): UseMqttReturn => {
         console.error("❌ MQTT Connection failed:", {
           errorCode: err.errorCode,
           errorMessage: err.errorMessage,
-          config: { host, port, path, useSSL }
+          config: { host, port, path, useSSL },
+          attempt: retryCount + 1,
+          maxRetries
         });
 
         // Log chi tiết hơn cho error code 7
@@ -95,6 +117,20 @@ const useMqtt = (brokerConfig: MqttBrokerConfig): UseMqttReturn => {
           console.error("- Check CORS settings on broker");
           console.error("- Check network/firewall");
         }
+
+        // Retry logic
+        if (retryCount < maxRetries && mountedRef.current) {
+          console.log(`🔄 Retrying connection in ${retryDelay / 1000} seconds... (${retryCount + 1}/${maxRetries})`);
+          setTimeout(() => {
+            if (mountedRef.current) {
+              setRetryCount(prev => prev + 1);
+              connectMqtt();
+            }
+          }, retryDelay);
+        } else if (retryCount >= maxRetries) {
+          console.error("❌ Max retries reached. Giving up connection attempts.");
+          setIsRetrying(false);
+        }
       },
       useSSL,
       userName: username,
@@ -102,16 +138,26 @@ const useMqtt = (brokerConfig: MqttBrokerConfig): UseMqttReturn => {
       timeout: 30, // 30 seconds timeout
       keepAliveInterval: 60 // 60 seconds keep-alive
     });
+  }, [host, port, path, clientId, useSSL, username, password, retryCount, maxRetries, retryDelay]);
+
+  // Tạo client MQTT - chỉ chạy một lần khi component mount
+  useEffect(() => {
+    if (initializedRef.current) {
+      return;
+    }
+
+    initializedRef.current = true;
+    connectMqtt();
 
     // Cleanup khi unmount
     return () => {
       mountedRef.current = false;
       connectingRef.current = false;
-      if (client.isConnected()) {
-        client.disconnect();
+      if (clientRef.current?.isConnected()) {
+        clientRef.current.disconnect();
       }
     };
-  }, []); // Empty dependencies - chỉ chạy một lần
+  }, [connectMqtt]); // Dependency vào connectMqtt function
 
   // Subscribe to topic
   const subscribe = useCallback((topic: string): void => {
@@ -141,6 +187,9 @@ const useMqtt = (brokerConfig: MqttBrokerConfig): UseMqttReturn => {
   return {
     client: clientRef.current,
     isConnected,
+    isRetrying,
+    retryCount,
+    maxRetries,
     messages,
     subscribe,
     publish,

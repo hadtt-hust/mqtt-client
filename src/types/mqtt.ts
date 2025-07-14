@@ -29,6 +29,9 @@ export interface MqttConnectionResponse {
 export interface UseMqttReturn {
   client: any; // Paho MQTT Client
   isConnected: boolean;
+  isRetrying: boolean;
+  retryCount: number;
+  maxRetries: number;
   messages: string[];
   subscribe: (topic: string) => void;
   publish: (topic: string, message: string) => void;

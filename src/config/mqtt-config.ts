@@ -1,16 +1,14 @@
 import { MqttBrokerConfig } from "../types/mqtt";
 
-// Cấu hình MQTT Broker
-export const mqttConfig: MqttBrokerConfig = {
-  // ⚠️ BẮT BUỘC: Thay đổi host thành IP broker của bạn
-  host: "YOUR_BROKER_IP", // Ví dụ: "192.168.1.100" hoặc "mqtt.example.com"
-  port: 1883, // 1883 cho MQTT, 8883 cho MQTT over SSL
-  path: "/mqtt",
-  useSSL: false, // true nếu dùng SSL/TLS
-  username: "YOUR_USERNAME", // Username để authenticate (optional)
-  password: "YOUR_PASSWORD", // Password để authenticate (optional)
-  clientId: "react-mqtt-client-" + Math.random().toString(16).substring(2, 10)
-};
+// Cấu hình MQTT Broker mặc định (không dùng - chỉ để reference)
+// export const mqttConfig: MqttBrokerConfig = {
+//   host: "YOUR_BROKER_IP",
+//   port: 1883,
+//   path: "/mqtt",
+//   useSSL: false,
+//   username: "YOUR_USERNAME",
+//   password: "YOUR_PASSWORD"
+// };
 
 // Cấu hình topics
 export const mqttTopics = {
@@ -27,7 +25,7 @@ export const messageConfig = {
   formatMessage: (message: string) => ({
     message,
     timestamp: new Date().toISOString(),
-    clientId: mqttConfig.clientId
+    clientId: "react-mqtt-client-" + Math.random().toString(16).substring(2, 10)
   }),
 
   // Parse message khi nhận
