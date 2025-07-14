@@ -4,17 +4,49 @@ import { Col, Container, Row, Alert } from "react-bootstrap";
 import "bootstrap/dist/css/bootstrap.min.css";
 import Header from "./components/Header";
 import MqttTest from "./components/MqttTest";
+import MqttDebug from "./components/MqttDebug";
+import WebSocketTest from "./components/WebSocketTest";
 import useMqtt from "./hooks/useMqtt";
 import { ParsedMessage } from "./types/mqtt";
-import { mqttConfig, mqttTopics, messageConfig } from "./config/mqtt-config";
+import { brokerPresets, createMqttConfig, mqttTopics, messageConfig } from "./config/mqtt-config";
 
 const App: React.FC = () => {
   const routingKey: string = mqttTopics.default;
   const [parsedMessages, setParsedMessages] = useState<string[]>([]);
   const subscribedRef = useRef<boolean>(false);
 
-  // Sử dụng MQTT hook với cấu hình từ file config
-  const { client, isConnected, messages, subscribe, publish } = useMqtt(mqttConfig);
+  // Sử dụng MQTT hook với cấu hình broker
+  // Chọn một trong các cách sau:
+
+  // Cách 1: Sử dụng preset có sẵn (để test)
+  // const { client, isConnected, messages, subscribe, publish } = useMqtt(brokerPresets.hivemq);
+
+  // Cách 2: Sử dụng broker của bạn với WebSocket
+  const { client, isConnected, messages, subscribe, publish } = useMqtt({
+    host: "YOUR_BROKER_IP", // ← Thay đổi thành IP broker của bạn
+    port: 9001, // ← Thay đổi thành WebSocket port của bạn
+    path: "/", // ← Thay đổi thành path WebSocket của bạn
+    useSSL: false, // ← true nếu dùng WSS
+    username: "YOUR_USERNAME", // ← Thêm username nếu có
+    password: "YOUR_PASSWORD" // ← Thêm password nếu có
+  });
+
+  // Cách 2: Tạo cấu hình tùy chỉnh
+  // const { client, isConnected, messages, subscribe, publish } = useMqtt(
+  //   createMqttConfig("192.168.1.100", {
+  //     port: 1883,
+  //     username: "admin",
+  //     password: "password123"
+  //   })
+  // );
+
+  // Cách 3: Sử dụng preset Mosquitto với auth
+  // const { client, isConnected, messages, subscribe, publish } = useMqtt({
+  //   ...brokerPresets.mosquittoAuth,
+  //   host: "192.168.1.100", // Thay đổi IP
+  //   username: "admin",     // Thay đổi username
+  //   password: "password123" // Thay đổi password
+  // });
 
   // Subscribe khi kết nối thành công - chỉ một lần
   useEffect(() => {
@@ -69,6 +101,21 @@ const App: React.FC = () => {
               <MqttTest isConnected={isConnected} onPublish={handlePublish} />
             </Col>
           </Row>
+
+          {/* WebSocket Test - Test WebSocket connection first */}
+          <Row className="justify-content-center">
+            <Col lg={12}>
+              <WebSocketTest />
+            </Col>
+          </Row>
+
+          {/* Debug Component - Comment out when not needed */}
+          <Row className="justify-content-center">
+            <Col lg={12}>
+              <MqttDebug />
+            </Col>
+          </Row>
+
           <Row className="justify-content-center">
             <Col lg={12} className="text-center">
               <h2>MQTT Messages</h2>

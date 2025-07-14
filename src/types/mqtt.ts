@@ -1,6 +1,6 @@
 // MQTT Broker Configuration
 export interface MqttBrokerConfig {
-  host?: string;
+  host: string; // Required
   port?: number;
   path?: string;
   clientId?: string;

@@ -2,16 +2,21 @@ import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { Client, Message } from "paho-mqtt";
 import { MqttBrokerConfig, UseMqttReturn, MqttConnectionResponse, MqttMessage } from "../types/mqtt";
 
-const useMqtt = (brokerConfig: MqttBrokerConfig = {}): UseMqttReturn => {
+const useMqtt = (brokerConfig: MqttBrokerConfig): UseMqttReturn => {
   const {
-    host = "broker.hivemq.com",
-    port = 8000,
+    host,
+    port = 1883,
     path = "/mqtt",
     clientId: providedClientId,
     useSSL = false,
     username,
     password
   } = brokerConfig;
+
+  // Validate required fields
+  if (!host) {
+    throw new Error("MQTT host is required");
+  }
 
   // Tạo clientId cố định để tránh re-render
   const clientId = useMemo(() => {
@@ -54,22 +59,48 @@ const useMqtt = (brokerConfig: MqttBrokerConfig = {}): UseMqttReturn => {
     // Kết nối
     connectingRef.current = true;
 
+    console.log("🔗 Attempting to connect to MQTT broker:", {
+      host,
+      port,
+      path,
+      useSSL,
+      username: username ? "***" : "none",
+      password: password ? "***" : "none",
+      clientId
+    });
+
     client.connect({
       onSuccess: () => {
         if (!mountedRef.current) return;
         setIsConnected(true);
         connectingRef.current = false;
-        console.log("✅ Connected to MQTT broker");
+        console.log("✅ Connected to MQTT broker successfully");
       },
       onFailure: (err: MqttConnectionResponse) => {
         if (!mountedRef.current) return;
         setIsConnected(false);
         connectingRef.current = false;
-        console.error("❌ MQTT Connection error:", err.errorMessage);
+        console.error("❌ MQTT Connection failed:", {
+          errorCode: err.errorCode,
+          errorMessage: err.errorMessage,
+          config: { host, port, path, useSSL }
+        });
+
+        // Log chi tiết hơn cho error code 7
+        if (err.errorCode === 7) {
+          console.error("🔍 Error Code 7 - CONNECTION_LOST details:");
+          console.error("- Check WebSocket path (try '/' instead of '/mqtt')");
+          console.error("- Check WebSocket port (common: 9001, 8083, 8084)");
+          console.error("- Check if broker supports WebSocket");
+          console.error("- Check CORS settings on broker");
+          console.error("- Check network/firewall");
+        }
       },
       useSSL,
       userName: username,
-      password: password
+      password: password,
+      timeout: 30, // 30 seconds timeout
+      keepAliveInterval: 60 // 60 seconds keep-alive
     });
 
     // Cleanup khi unmount
